@@ -1,0 +1,96 @@
+#!/bin/bash
+echo -e "***欢迎使用 Deepin-loongson 版系统备份工具***\n"
+echo -e "使用前请确认满足以下条件:\n1.当前电脑开机使用的是live系统(即用于安装系统的系统安装光盘或者u盘启动系统的，安装光盘或者u盘的制作请参看系统安装手册)\n2.需要备份的系统已经安装在当前电脑的硬盘上\n3.电脑额外插入一个用于存储备份数据的u盘、或者是移动硬盘(u盘可用空间最好大于5G,为防止存储空间不够大推荐使用移动硬盘)\n"
+
+INPUT_DATA=''
+    echo  "请选择是否继续[ Y/n ] ?"
+    read -n 1  INPUT_DATA
+
+case $INPUT_DATA in  Y|y|'' )
+   ;;
+    * )
+    echo "您选择了退出备份,欢迎再次使用!"
+    exit 0
+   ;;
+esac
+
+[ -d /tmp/backup ] || mkdir -p /tmp/backup 
+
+
+
+     livecd_sd_line=$( mount | grep "cdrom" | grep sd ) 
+     livecd_sr_line=$( mount | grep "cdrom" | grep sr )
+    if [ "$livecd_sd_line" == "" ] && [ "$livecd_sr_line" == "" ]
+        then
+        echo "请启动live系统,用于备份和还原系统" && exit 0
+        fi
+    livecd_sd=${livecd_sd_line%% on*}
+
+sds=$( find /dev -name sd*1 )
+nsds=$( find /dev -name sd*1 | wc -l )
+if [ $nsds != 3 ] && [ "$livecd_sd_line" != "" ]
+    then
+    echo -e "请确保只有且只有一个 用于存放备份数据的 存储设备!"
+    exit 0
+    elif [ $nsds != 2 ] && [ "$livecd_sr_line" != "" ] 
+    then
+    echo -e "请确保只有且只有一个 用于存放备份数据的 存储设备!"
+    exit 0
+   fi 
+
+rootuuid=''
+rootsd=''
+
+for sd in $sds 
+    do
+    if [ $sd != "$livecd_sd" ]
+    then
+    tmpdir="/tmp/backup$sd"
+         mkdir -p $tmpdir
+         sudo mount $sd $tmpdir
+        if [ -f $tmpdir/boot/grub.cfg ] 
+            then
+            rootuuidline=$( grep -r "UUID" $tmpdir/boot/grub.cfg )
+            rootsd=$sd
+            rootuuid=${rootuuidline##*root=}
+            sync && sudo umount $tmpdir
+            break
+            fi
+        sync && sudo umount $tmpdir
+    fi
+    done
+
+store_sd=''
+
+for sd in $sds
+    do 
+        if [ $sd != "$rootsd" ] && [ $sd != "$livecd_sd" ];then
+        store_sd=$sd
+        break
+        fi
+    done
+
+
+sudo mount $rootuuid /tmp/backup$rootsd
+[ -f /tmp/backup$rootsd/etc/fstab ] 
+
+mkdir -p /tmp/backup$store_sd
+sudo mount $store_sd /tmp/backup$store_sd
+[ -d /tmp/backup$store_sd/deepin_system_backup_files ] || sudo mkdir -p -m 777 /tmp/backup$store_sd/deepin_system_backup_files
+sudo rm -rf /tmp/backup$store_sd/deepin_system_backup_files/*
+cp /tmp/backup$rootsd/etc/fstab  /tmp/backup$store_sd/deepin_system_backup_files/fstabinfo
+uuids=$(grep -r "UUID" /tmp/backup$rootsd/etc/fstab | grep "/" | awk '{ print $1 }')
+
+for uuid in $uuids
+    do
+    echo -e "开始备份分区uuid为 $uuid 的分区...\n"
+    name=${uuid##*UID=}
+    mkdir -p /tmp/backup/$name
+    sudo mount $uuid /tmp/backup/$name
+    sudo mksquashfs /tmp/backup/$name /tmp/backup$store_sd/deepin_system_backup_files/$name.squashfs
+    sync && sudo umount /tmp/backup/$name
+        done
+echo "开始做善后处理请稍后..." && sync && sudo umount /tmp/backup$store_sd && sudo umount /tmp/backup$rootsd
+echo -e "恭喜,您的系统已经备份到了存储盘的 deepin_system_backup_files 文件夹\n注意两点:\n1.请勿修改备份文件夹以及文件夹中文件\n2.请勿在还原系统前格式化你所备份的系统的硬盘，也不要新建或删除磁盘分区"
+#end
+

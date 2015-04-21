@@ -1,0 +1,76 @@
+#!/bin/bash
+
+echo -e "***欢迎使用 Deepin 龙芯版系统还原工具***\n"
+echo -e "使用前请确认满足以下条件:\n1.当前电脑开机使用的是live系统(即用于安装系统的系统安装光盘或者u盘启动系统的，安装光盘或者u盘的制作请参看系统安装手册)\n2.需要还原系统的硬盘是备份时的那块硬盘，而且没有被重新分区\n3.电脑已经插入有备份数据的存储盘(有deepin_system_backup_files目录的存储盘)\n"
+
+INPUT_DATA=''
+    echo -e "系统还原会让你的硬盘上安装的系统还原到最后一次备份时的状态\n这会使您丢失上次备份时刻到现在这期间系统的所有改动\n请谨慎操作,备份前请确认所有重要的数据已经做了备份\n请选择是否继续[ Y/n ]？"
+    read -n 1  INPUT_DATA
+
+case $INPUT_DATA in  Y|y )
+   ;;
+    * )
+    echo "您选择了退出系统还原,欢迎再次使用!"
+    exit 0
+   ;;
+esac
+
+[ -d /tmp/backup ] || mkdir -p /tmp/backup 
+
+     livecd_sd_line=$( mount | grep "cdrom" | grep sd ) #u盘启动
+     livecd_sr_line=$( mount | grep "cdrom" | grep sr ) #光盘启动
+    if [ "$livecd_sd_line" == "" ] && [ "$livecd_sr_line" == "" ]
+        then
+        echo "请启动live系统,用于备份和还原系统" && exit 0
+        fi
+    livecd_sd=${livecd_sd_line%% on*}
+
+sds=$( find /dev -name sd*1 )
+nsds=$( find /dev -name sd*1 | wc -l )
+if [ "$nsds" -lt 2 ]
+    then
+    echo -e "请确保要还原的硬盘已经连接,存放有备份数据的存储设备已经连接到电脑!"
+    exit 0
+   fi  
+
+backup_files_dir='' 
+
+for sd in $sds 
+    do
+    [ -d /tmp/backup$sd ] || mkdir /tmp/backup$sd
+    sudo mount $sd /tmp/backup$sd
+    if [ -d /tmp/backup$sd/deepin_system_backup_files ]
+        then
+        backup_files_dir="/tmp/backup$sd"
+        break;
+        fi
+        sync && sudo umount /tmp/backup$sd
+    done
+[ "$backup_files_dir" == "" ] && echo "请确认存放有备份数据的设备已经连接" && exit 0
+uuids=$(grep -r "UUID" $backup_files_dir/deepin_system_backup_files/fstabinfo | grep "/" | awk '{ print $1 }')
+
+localuuids_line=$( sudo blkid )
+
+for uuid in $uuids
+    do
+        tmpvar=${uuid##*ID=}
+       if [[ "${uuids/$uuid/}" != "$uuid" ]]
+            then
+                [ -d /tmp/backup$tmpvar ] || mkdir /tmp/backup$tmpvar
+                sudo mount $uuid /tmp/backup$tmpvar
+                echo -e "开始还原UUID为:$tmpvar 的分区\n"
+                sudo rm -rf /tmp/backup$tmpvar/*
+                sudo unsquashfs -p 1 -f -d /tmp/backup$tmpvar $backup_files_dir/deepin_system_backup_files/$tmpvar.squashfs
+                sync && umount /tmp/backup$tmpvar
+            else 
+                echo "请确保是使用的备份时的硬盘，而且硬盘分区没有任何调整" && exit 0
+
+            fi
+        done
+
+echo "开始做善后处理请稍后..." && sudo sync 
+echo "恭喜,您的系统已经还原到硬盘,欢迎再次使用deepin 龙芯版备份还原工具"
+#end
+
+
+
