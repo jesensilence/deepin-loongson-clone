@@ -1,5 +1,4 @@
 #!/bin/bash
-
 echo -e "***欢迎使用 Deepin 龙芯版系统还原工具***\n"
 echo -e "使用前请确认满足以下条件:\n1.当前电脑开机使用的是live系统(即用于安装系统的系统安装光盘或者u盘启动系统的，安装光盘或者u盘的制作请参看系统安装手册)\n2.需要还原系统的硬盘是备份时的那块硬盘，而且没有被重新分区\n3.电脑已经插入有备份数据的存储盘(有deepin_system_backup_files目录的存储盘)\n"
 
@@ -37,7 +36,7 @@ backup_files_dir=''
 
 for sd in $sds 
     do
-    [ -d /tmp/backup$sd ] || mkdir /tmp/backup$sd
+    [ -d /tmp/backup$sd ] || mkdir -p /tmp/backup$sd
     sudo mount $sd /tmp/backup$sd
     if [ -d /tmp/backup$sd/deepin_system_backup_files ]
         then
@@ -56,12 +55,12 @@ for uuid in $uuids
         tmpvar=${uuid##*ID=}
        if [[ "${uuids/$uuid/}" != "$uuid" ]]
             then
-                [ -d /tmp/backup$tmpvar ] || mkdir /tmp/backup$tmpvar
+                [ -d /tmp/backup$tmpvar ] || mkdir -p /tmp/backup$tmpvar
                 sudo mount $uuid /tmp/backup$tmpvar
                 echo -e "开始还原UUID为:$tmpvar 的分区\n"
                 sudo rm -rf /tmp/backup$tmpvar/*
                 sudo unsquashfs -p 1 -f -d /tmp/backup$tmpvar $backup_files_dir/deepin_system_backup_files/$tmpvar.squashfs
-                sync && umount /tmp/backup$tmpvar
+                sudo sync && umount /tmp/backup$tmpvar
             else 
                 echo "请确保是使用的备份时的硬盘，而且硬盘分区没有任何调整" && exit 0
 
