@@ -57,10 +57,10 @@ for uuid in $uuids
             then
                 [ -d /tmp/backup$tmpvar ] || mkdir -p /tmp/backup$tmpvar
                 sudo mount $uuid /tmp/backup$tmpvar
-                echo -e "开始还原UUID为:$tmpvar 的分区\n"
+                echo -e "开始还原UUID为:$tmpvar 的分区,这会花费一点时间,请耐心等待...\n"
                 sudo rm -rf /tmp/backup$tmpvar/*
                 sudo unsquashfs -p 1 -f -d /tmp/backup$tmpvar $backup_files_dir/deepin_system_backup_files/$tmpvar.squashfs
-                sudo sync && umount /tmp/backup$tmpvar
+                sudo sync && sudo umount /tmp/backup$tmpvar
             else 
                 echo "请确保是使用的备份时的硬盘，而且硬盘分区没有任何调整" && exit 0
 
