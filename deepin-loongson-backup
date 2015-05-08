@@ -76,6 +76,8 @@ sudo mount $rootuuid /tmp/backup$rootsd
 
 mkdir -p /tmp/backup$store_sd
 sudo mount $store_sd /tmp/backup$store_sd
+[ $? -ne 0 ] && echo -e  "存放备份数据的磁盘分区挂载失败,提示：\n请不要在备份还原操作前，打开文件管理器或者挂载存放数据的磁盘\n如果已经打开文件管>    理器或者挂载，请关闭文件管理器窗口，拔出存储设备，重新插入，再运行本命令\n" && exit 0
+
 [ -d /tmp/backup$store_sd/deepin_system_backup_files ] || sudo mkdir -p -m 777 /tmp/backup$store_sd/deepin_system_backup_files
 sudo rm -rf /tmp/backup$store_sd/deepin_system_backup_files/*
 cp /tmp/backup$rootsd/etc/fstab  /tmp/backup$store_sd/deepin_system_backup_files/fstabinfo

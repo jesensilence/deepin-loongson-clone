@@ -38,6 +38,8 @@ for sd in $sds
     do
     [ -d /tmp/backup$sd ] || mkdir -p /tmp/backup$sd
     sudo mount $sd /tmp/backup$sd
+    [ $? -ne 0 ] && echo -e  "存放备份数据的磁盘分区挂载失败,提示：\n请不要在备份还原操作前，打开文件管理器或者挂载存放数据的磁盘\n如果已经打开文件管>    理器或者挂载，请关闭文件管理器窗口，拔出存储设备，重新插入，再运行本命令\n" && exit 0
+
     if [ -d /tmp/backup$sd/deepin_system_backup_files ]
         then
         backup_files_dir="/tmp/backup$sd"
